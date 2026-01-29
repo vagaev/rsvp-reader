@@ -628,11 +628,41 @@
             // Получаем существующих пользователей
             let users = JSON.parse(localStorage.getItem('rsvp_users') || '{}');
             
-            // Если пользователь новый - сохраняем
+            // Если пользователь новый - сохраняем локально И отправляем в Google Sheets
             if (!users[user.id]) {
                 users[user.id] = userData;
                 localStorage.setItem('rsvp_users', JSON.stringify(users));
+                
+                // Отправляем в Google Sheets
+                sendToGoogleSheets(userData);
             }
+        }
+        
+        // Отправка данных в Google Sheets
+        function sendToGoogleSheets(data) {
+            // URL Google Apps Script
+            const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbx-ABYFp3ERchJ5X1yOl_s-7ggQRZCDhpIxbom-hHMDlZvITXQlMXkJbX9Gb5OLEDxXtg/exec';
+            
+            fetch(GOOGLE_SCRIPT_URL, {
+                method: 'POST',
+                mode: 'no-cors', // Важно для Google Scripts
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    user_id: data.id,
+                    first_name: data.first_name,
+                    last_name: data.last_name,
+                    username: data.username,
+                    language_code: data.language_code,
+                    readings: data.readings || 0,
+                    last_reading: data.last_reading || ''
+                })
+            }).then(() => {
+                console.log('✅ Данные отправлены в Google Sheets');
+            }).catch(error => {
+                console.log('Ошибка отправки в Google Sheets:', error);
+            });
         }
         
         // Обновление счетчика прочтений
@@ -642,6 +672,17 @@
                 users[userId].readings = (users[userId].readings || 0) + 1;
                 users[userId].last_reading = new Date().toISOString();
                 localStorage.setItem('rsvp_users', JSON.stringify(users));
+                
+                // Отправляем обновление в Google Sheets
+                sendToGoogleSheets({
+                    id: userId,
+                    first_name: users[userId].first_name,
+                    last_name: users[userId].last_name,
+                    username: users[userId].username,
+                    language_code: users[userId].language_code,
+                    readings: 1, // Прибавляем 1 к счетчику
+                    last_reading: users[userId].last_reading
+                });
             }
         }
         
