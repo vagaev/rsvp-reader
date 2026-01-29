@@ -225,6 +225,89 @@
             display: block;
         }
 
+        .activation-screen {
+            display: none;
+            text-align: center;
+            padding: 40px 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 20px;
+            margin: 20px 0;
+            color: white;
+        }
+
+        .activation-screen.active {
+            display: block;
+        }
+
+        .activation-icon {
+            font-size: 72px;
+            margin-bottom: 20px;
+        }
+
+        .activation-title {
+            font-size: 28px;
+            font-weight: 700;
+            margin-bottom: 16px;
+        }
+
+        .activation-text {
+            font-size: 18px;
+            line-height: 1.6;
+            margin-bottom: 24px;
+            opacity: 0.95;
+        }
+
+        .activation-benefits {
+            background: rgba(255, 255, 255, 0.15);
+            padding: 20px;
+            border-radius: 12px;
+            margin: 20px 0;
+            text-align: left;
+        }
+
+        .benefit-item {
+            display: flex;
+            align-items: center;
+            margin: 12px 0;
+            font-size: 16px;
+        }
+
+        .benefit-item::before {
+            content: "✨";
+            margin-right: 12px;
+            font-size: 20px;
+        }
+
+        .activation-button {
+            background: white;
+            color: #667eea;
+            padding: 16px 32px;
+            border-radius: 12px;
+            font-size: 18px;
+            font-weight: 700;
+            border: none;
+            cursor: pointer;
+            margin-top: 20px;
+            transition: all 0.2s;
+        }
+
+        .activation-button:hover {
+            transform: scale(1.05);
+            box-shadow: 0 8px 20px rgba(0,0,0,0.2);
+        }
+
+        .skip-button {
+            background: transparent;
+            color: white;
+            border: 2px solid rgba(255,255,255,0.5);
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 14px;
+            cursor: pointer;
+            margin-top: 12px;
+            margin-left: 12px;
+        }
+
         .completion-icon {
             font-size: 72px;
             margin-bottom: 20px;
@@ -333,6 +416,30 @@
                 <div class="completion-stat">💪 Экономия времени: <strong id="timeSaved">0</strong> минут</div>
             </div>
         </div>
+
+        <div class="activation-screen" id="activationScreen">
+            <div class="activation-icon">🎁</div>
+            <div class="activation-title">Вам нравится читалка?</div>
+            <div class="activation-text">
+                Вы уже прочитали несколько текстов.<br>
+                Получите больше возможностей!
+            </div>
+            
+            <div class="activation-benefits">
+                <div class="benefit-item">Еженедельные дайджесты статей про AI и бизнес</div>
+                <div class="benefit-item">Сохранение вашего прогресса и истории</div>
+                <div class="benefit-item">Библиотека готовых статей для чтения</div>
+                <div class="benefit-item">Персональные рекомендации контента</div>
+                <div class="benefit-item">Уведомления о новых материалах</div>
+            </div>
+
+            <button class="activation-button" onclick="activateBot()">
+                🚀 Активировать бесплатно
+            </button>
+            <button class="skip-button" onclick="skipActivation()">
+                Пока нет
+            </button>
+        </div>
     </div>
 
     <script>
@@ -348,18 +455,45 @@
                 try {
                     const user = tg.initDataUnsafe?.user;
                     if (user) {
-                        const userData = {
-                            action: 'user_opened',
-                            user_id: user.id,
-                            first_name: user.first_name,
-                            last_name: user.last_name || '',
-                            username: user.username || '',
-                            language_code: user.language_code || ''
-                        };
+                        // Отправляем данные напрямую через HTTP
+                        const botToken = '8366165210:AAEAooGpnqiZaIR3Cb0UC1CQC__g1WI_VdY';
+                        const adminId = '174211648';
                         
-                        // Отправляем данные боту
-                        tg.sendData(JSON.stringify(userData));
-                        console.log('Данные пользователя отправлены боту:', userData);
+                        const message = `🔓 Анонимный пользователь открыл читалку!\n\n` +
+                            `👤 Имя: ${user.first_name} ${user.last_name || ''}\n` +
+                            `🆔 ID: ${user.id}\n` +
+                            `📱 Username: ${user.username ? '@' + user.username : 'нет'}\n` +
+                            `🌍 Язык: ${user.language_code || 'не указан'}\n` +
+                            `⏰ Время: ${new Date().toLocaleTimeString('ru-RU')}\n\n` +
+                            `⚠️ Пользователь НЕ нажал START - нельзя отправить сообщение`;
+                        
+                        // Отправляем сообщение через Telegram Bot API
+                        fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify({
+                                chat_id: adminId,
+                                text: message,
+                                parse_mode: 'HTML'
+                            })
+                        }).then(response => {
+                            if (response.ok) {
+                                console.log('✅ Данные анонимного пользователя отправлены админу');
+                            }
+                        }).catch(error => {
+                            console.log('Ошибка отправки:', error);
+                        });
+                        
+                        // Сохраняем в локальное хранилище для отслеживания повторных визитов
+                        const visitKey = `visited_${user.id}`;
+                        if (!localStorage.getItem(visitKey)) {
+                            localStorage.setItem(visitKey, new Date().toISOString());
+                            console.log('Первый визит пользователя записан');
+                        } else {
+                            console.log('Повторный визит пользователя');
+                        }
                     }
                 } catch (error) {
                     console.log('Ошибка отправки данных:', error);
@@ -386,6 +520,7 @@
         const finalTime = document.getElementById('finalTime');
         const finalSpeed = document.getElementById('finalSpeed');
         const timeSaved = document.getElementById('timeSaved');
+        const activationScreen = document.getElementById('activationScreen');
 
         // Переменные состояния
         let words = [];
@@ -396,6 +531,42 @@
         let startTime = null;
         let elapsedSeconds = 0;
         let timerInterval = null;
+
+        // Отслеживание количества завершенных чтений
+        const READINGS_KEY = 'rsvp_readings_count';
+        const ACTIVATION_SHOWN_KEY = 'rsvp_activation_shown';
+        
+        function getReadingsCount() {
+            return parseInt(localStorage.getItem(READINGS_KEY) || '0');
+        }
+        
+        function incrementReadings() {
+            const count = getReadingsCount() + 1;
+            localStorage.setItem(READINGS_KEY, count.toString());
+            return count;
+        }
+        
+        function wasActivationShown() {
+            return localStorage.getItem(ACTIVATION_SHOWN_KEY) === 'true';
+        }
+        
+        function markActivationShown() {
+            localStorage.setItem(ACTIVATION_SHOWN_KEY, 'true');
+        }
+        
+        function activateBot() {
+            // Открываем бота для активации
+            if (tg) {
+                tg.close();
+            }
+            window.open('https://t.me/rsvp_reader_bot', '_blank');
+        }
+        
+        function skipActivation() {
+            markActivationShown();
+            activationScreen.classList.remove('active');
+            completionScreen.classList.add('active');
+        }
 
         // Тестовый текст для демонстрации
         const demoText = `Быстрое чтение — это навык, который позволяет обрабатывать информацию в несколько раз быстрее обычного. Технология RSVP показывает слова по одному, устраняя движения глаз и возвраты к тексту. Это позволяет мозгу сфокусироваться только на понимании, а не на физическом процессе чтения. Попробуйте увеличить скорость и почувствуйте разницу! Вы удивитесь, насколько быстро можно читать с полным пониманием текста.`;
@@ -562,7 +733,6 @@
             timeSaved.textContent = saved;
             
             readerSection.classList.remove('active');
-            completionScreen.classList.add('active');
             
             startBtn.disabled = false;
             pauseBtn.disabled = true;
@@ -571,26 +741,59 @@
             
             isReading = false;
             
+            // Увеличиваем счетчик прочитанных текстов
+            const readingsCount = incrementReadings();
+            
+            // Проверяем - показывать ли экран активации
+            const shouldShowActivation = readingsCount >= 2 && !wasActivationShown();
+            
+            if (shouldShowActivation) {
+                // Показываем экран активации
+                activationScreen.classList.add('active');
+                completionScreen.classList.remove('active');
+            } else {
+                // Показываем обычный экран завершения
+                completionScreen.classList.add('active');
+                activationScreen.classList.remove('active');
+            }
+            
             // Вибрация успеха
             if (tg) {
                 tg.HapticFeedback.notificationOccurred('success');
                 
-                // ОТПРАВКА СТАТИСТИКИ БОТУ
+                // ОТПРАВКА СТАТИСТИКИ БОТУ через HTTP
                 try {
                     const user = tg.initDataUnsafe?.user;
-                    const statsData = {
-                        action: 'reading_completed',
-                        user_id: user?.id,
-                        first_name: user?.first_name,
-                        username: user?.username || '',
-                        words_count: words.length,
-                        time_seconds: totalTime,
-                        speed_wpm: avgWpm,
-                        time_saved_seconds: saved
-                    };
+                    const botToken = '8366165210:AAEAooGpnqiZaIR3Cb0UC1CQC__g1WI_VdY';
+                    const adminId = '174211648';
                     
-                    tg.sendData(JSON.stringify(statsData));
-                    console.log('Статистика отправлена боту:', statsData);
+                    const message = `📊 Пользователь завершил чтение #${readingsCount}!\n\n` +
+                        `👤 ${user?.first_name || 'Аноним'} ${user?.username ? '(@' + user.username + ')' : ''}\n` +
+                        `🆔 ID: ${user?.id || 'неизвестен'}\n` +
+                        `📖 Слов: ${words.length}\n` +
+                        `⏱ Время: ${totalTime}с (${formatTime(totalTime)})\n` +
+                        `🚀 Скорость: ${avgWpm} слов/мин\n` +
+                        `💾 Сэкономлено: ${saved}с\n` +
+                        `🔢 Всего прочтений: ${readingsCount}` +
+                        (shouldShowActivation ? '\n\n🎁 Показан экран активации' : '');
+                    
+                    fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            chat_id: adminId,
+                            text: message,
+                            parse_mode: 'HTML'
+                        })
+                    }).then(response => {
+                        if (response.ok) {
+                            console.log('✅ Статистика отправлена админу');
+                        }
+                    }).catch(error => {
+                        console.log('Ошибка отправки статистики:', error);
+                    });
                 } catch (error) {
                     console.log('Ошибка отправки статистики:', error);
                 }
