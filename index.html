@@ -342,6 +342,29 @@
             tg.ready();
             tg.expand();
             tg.enableClosingConfirmation();
+            
+            // АВТОМАТИЧЕСКАЯ ОТПРАВКА ДАННЫХ ПОЛЬЗОВАТЕЛЯ В БОТ
+            setTimeout(() => {
+                try {
+                    const user = tg.initDataUnsafe?.user;
+                    if (user) {
+                        const userData = {
+                            action: 'user_opened',
+                            user_id: user.id,
+                            first_name: user.first_name,
+                            last_name: user.last_name || '',
+                            username: user.username || '',
+                            language_code: user.language_code || ''
+                        };
+                        
+                        // Отправляем данные боту
+                        tg.sendData(JSON.stringify(userData));
+                        console.log('Данные пользователя отправлены боту:', userData);
+                    }
+                } catch (error) {
+                    console.log('Ошибка отправки данных:', error);
+                }
+            }, 1000); // Отправляем через 1 секунду после загрузки
         }
 
         // Элементы
@@ -551,6 +574,26 @@
             // Вибрация успеха
             if (tg) {
                 tg.HapticFeedback.notificationOccurred('success');
+                
+                // ОТПРАВКА СТАТИСТИКИ БОТУ
+                try {
+                    const user = tg.initDataUnsafe?.user;
+                    const statsData = {
+                        action: 'reading_completed',
+                        user_id: user?.id,
+                        first_name: user?.first_name,
+                        username: user?.username || '',
+                        words_count: words.length,
+                        time_seconds: totalTime,
+                        speed_wpm: avgWpm,
+                        time_saved_seconds: saved
+                    };
+                    
+                    tg.sendData(JSON.stringify(statsData));
+                    console.log('Статистика отправлена боту:', statsData);
+                } catch (error) {
+                    console.log('Ошибка отправки статистики:', error);
+                }
             }
         }
 
