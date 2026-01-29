@@ -555,11 +555,17 @@
         }
         
         function activateBot() {
-            // Открываем бота для активации
+            // Используем Telegram deep link для открытия бота
+            const botUsername = 'rsvp_reader_bot';
+            const deepLink = `https://t.me/${botUsername}?start=activate`;
+            
             if (tg) {
-                tg.close();
+                // Открываем внешнюю ссылку через Telegram API
+                tg.openTelegramLink(deepLink);
+            } else {
+                // Запасной вариант
+                window.open(deepLink, '_blank');
             }
-            window.open('https://t.me/rsvp_reader_bot', '_blank');
         }
         
         function skipActivation() {
