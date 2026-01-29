@@ -335,6 +335,80 @@
             margin-left: 12px;
         }
 
+        .admin-panel {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.95);
+            z-index: 1000;
+            overflow-y: auto;
+            padding: 20px;
+            color: white;
+        }
+
+        .admin-panel.active {
+            display: block;
+        }
+
+        .admin-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #3390ec;
+        }
+
+        .admin-close {
+            background: #ff3b30;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+
+        .user-card {
+            background: rgba(255,255,255,0.1);
+            padding: 12px;
+            border-radius: 8px;
+            margin: 10px 0;
+            border-left: 4px solid #3390ec;
+        }
+
+        .user-card.activated {
+            border-left-color: #34c759;
+        }
+
+        .admin-stats {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        .stat-card {
+            background: rgba(51,144,236,0.2);
+            padding: 16px;
+            border-radius: 12px;
+            text-align: center;
+        }
+
+        .stat-card-value {
+            font-size: 32px;
+            font-weight: 700;
+            color: #3390ec;
+        }
+
+        .stat-card-label {
+            font-size: 12px;
+            margin-top: 4px;
+            opacity: 0.8;
+        }
+
         .completion-icon {
             font-size: 72px;
             margin-bottom: 20px;
@@ -381,6 +455,9 @@
 <body>
     <div class="container">
         <h1>⚡ RSVP Читалка</h1>
+
+        <!-- Кнопка админки (только для тебя) -->
+        <div style="text-align: center; margin-bottom: 10px;" id="adminBtn"></div>
 
         <div class="input-section">
             <textarea id="textInput" placeholder="Вставьте текст для быстрого чтения..."></textarea>
@@ -482,6 +559,28 @@
                 Не сейчас
             </button>
         </div>
+
+        <!-- Админ-панель -->
+        <div class="admin-panel" id="adminPanel">
+            <div class="admin-header">
+                <h2>📊 Статистика пользователей</h2>
+                <button class="admin-close" onclick="closeAdmin()">✕ Закрыть</button>
+            </div>
+
+            <div class="admin-stats">
+                <div class="stat-card">
+                    <div class="stat-card-value" id="totalUsers">0</div>
+                    <div class="stat-card-label">Всего открыли</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-card-value" id="totalReadings">0</div>
+                    <div class="stat-card-label">Всего прочтений</div>
+                </div>
+            </div>
+
+            <h3 style="margin: 20px 0 10px 0;">👥 Пользователи:</h3>
+            <div id="usersList"></div>
+        </div>
     </div>
 
     <script>
@@ -492,55 +591,103 @@
             tg.expand();
             tg.enableClosingConfirmation();
             
-            // АВТОМАТИЧЕСКАЯ ОТПРАВКА ДАННЫХ ПОЛЬЗОВАТЕЛЯ В БОТ
+            // СОХРАНЕНИЕ ДАННЫХ ПОЛЬЗОВАТЕЛЯ ЛОКАЛЬНО
             setTimeout(() => {
                 try {
                     const user = tg.initDataUnsafe?.user;
                     if (user) {
-                        // Отправляем данные напрямую через HTTP
-                        const botToken = '8366165210:AAEAooGpnqiZaIR3Cb0UC1CQC__g1WI_VdY';
-                        const adminId = '174211648';
-                        
-                        const message = `🔓 Анонимный пользователь открыл читалку!\n\n` +
-                            `👤 Имя: ${user.first_name} ${user.last_name || ''}\n` +
-                            `🆔 ID: ${user.id}\n` +
-                            `📱 Username: ${user.username ? '@' + user.username : 'нет'}\n` +
-                            `🌍 Язык: ${user.language_code || 'не указан'}\n` +
-                            `⏰ Время: ${new Date().toLocaleTimeString('ru-RU')}\n\n` +
-                            `⚠️ Пользователь НЕ нажал START - нельзя отправить сообщение`;
-                        
-                        // Отправляем сообщение через Telegram Bot API
-                        fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                            },
-                            body: JSON.stringify({
-                                chat_id: adminId,
-                                text: message,
-                                parse_mode: 'HTML'
-                            })
-                        }).then(response => {
-                            if (response.ok) {
-                                console.log('✅ Данные анонимного пользователя отправлены админу');
-                            }
-                        }).catch(error => {
-                            console.log('Ошибка отправки:', error);
-                        });
-                        
-                        // Сохраняем в локальное хранилище для отслеживания повторных визитов
-                        const visitKey = `visited_${user.id}`;
-                        if (!localStorage.getItem(visitKey)) {
-                            localStorage.setItem(visitKey, new Date().toISOString());
-                            console.log('Первый визит пользователя записан');
-                        } else {
-                            console.log('Повторный визит пользователя');
-                        }
+                        // Сохраняем данные пользователя
+                        saveUserData(user);
+                        console.log('Пользователь открыл приложение:', user.first_name);
                     }
                 } catch (error) {
-                    console.log('Ошибка отправки данных:', error);
+                    console.log('Ошибка сохранения данных:', error);
                 }
-            }, 1000); // Отправляем через 1 секунду после загрузки
+            }, 1000);
+            
+            // Показываем кнопку админки если это админ
+            const ADMIN_ID = 174211648; // Твой ID
+            if (tg.initDataUnsafe?.user?.id === ADMIN_ID) {
+                document.getElementById('adminBtn').innerHTML = 
+                    '<button onclick="openAdmin()" style="padding: 8px 16px; background: #3390ec; color: white; border: none; border-radius: 8px; font-size: 14px; cursor: pointer;">📊 Статистика</button>';
+            }
+        }
+
+        // Сохранение данных пользователя
+        function saveUserData(user) {
+            const userData = {
+                id: user.id,
+                first_name: user.first_name,
+                last_name: user.last_name || '',
+                username: user.username || '',
+                language_code: user.language_code || '',
+                first_seen: new Date().toISOString(),
+                readings: 0
+            };
+            
+            // Получаем существующих пользователей
+            let users = JSON.parse(localStorage.getItem('rsvp_users') || '{}');
+            
+            // Если пользователь новый - сохраняем
+            if (!users[user.id]) {
+                users[user.id] = userData;
+                localStorage.setItem('rsvp_users', JSON.stringify(users));
+            }
+        }
+        
+        // Обновление счетчика прочтений
+        function updateUserReadings(userId) {
+            let users = JSON.parse(localStorage.getItem('rsvp_users') || '{}');
+            if (users[userId]) {
+                users[userId].readings = (users[userId].readings || 0) + 1;
+                users[userId].last_reading = new Date().toISOString();
+                localStorage.setItem('rsvp_users', JSON.stringify(users));
+            }
+        }
+        
+        // Открыть админ-панель
+        function openAdmin() {
+            const panel = document.getElementById('adminPanel');
+            panel.classList.add('active');
+            loadAdminData();
+            if (tg) tg.HapticFeedback.impactOccurred('medium');
+        }
+        
+        // Закрыть админ-панель
+        function closeAdmin() {
+            document.getElementById('adminPanel').classList.remove('active');
+        }
+        
+        // Загрузка данных для админки
+        function loadAdminData() {
+            const users = JSON.parse(localStorage.getItem('rsvp_users') || '{}');
+            const usersList = document.getElementById('usersList');
+            
+            const usersArray = Object.values(users);
+            const totalReadings = usersArray.reduce((sum, u) => sum + (u.readings || 0), 0);
+            
+            document.getElementById('totalUsers').textContent = usersArray.length;
+            document.getElementById('totalReadings').textContent = totalReadings;
+            
+            usersArray.sort((a, b) => new Date(b.first_seen) - new Date(a.first_seen));
+            
+            usersList.innerHTML = usersArray.map(user => {
+                const date = new Date(user.first_seen).toLocaleString('ru-RU');
+                const lastReading = user.last_reading ? 
+                    `<br>📖 Последнее чтение: ${new Date(user.last_reading).toLocaleString('ru-RU')}` : '';
+                
+                return `
+                    <div class="user-card">
+                        <strong>👤 ${user.first_name} ${user.last_name}</strong>
+                        ${user.username ? `<br>📱 @${user.username}` : ''}
+                        <br>🆔 ID: ${user.id}
+                        <br>🌍 Язык: ${user.language_code}
+                        <br>⏰ Первый визит: ${date}
+                        ${user.readings ? `<br>📚 Прочтений: ${user.readings}` : ''}
+                        ${lastReading}
+                    </div>
+                `;
+            }).join('');
         }
 
         // Элементы
@@ -585,6 +732,12 @@
         function incrementReadings() {
             const count = getReadingsCount() + 1;
             localStorage.setItem(READINGS_KEY, count.toString());
+            
+            // Обновляем счетчик прочтений для пользователя
+            if (tg && tg.initDataUnsafe?.user) {
+                updateUserReadings(tg.initDataUnsafe.user.id);
+            }
+            
             return count;
         }
         
@@ -886,41 +1039,21 @@
             if (tg) {
                 tg.HapticFeedback.notificationOccurred('success');
                 
-                // ОТПРАВКА СТАТИСТИКИ БОТУ через HTTP
+                // ВАЖНО: Для безопасности статистика должна отправляться через сервер
+                // Сейчас просто логируем локально
                 try {
                     const user = tg.initDataUnsafe?.user;
-                    const botToken = '8366165210:AAEAooGpnqiZaIR3Cb0UC1CQC__g1WI_VdY';
-                    const adminId = '174211648';
                     
-                    const message = `📊 Пользователь завершил чтение #${readingsCount}!\n\n` +
-                        `👤 ${user?.first_name || 'Аноним'} ${user?.username ? '(@' + user.username + ')' : ''}\n` +
-                        `🆔 ID: ${user?.id || 'неизвестен'}\n` +
-                        `📖 Слов: ${words.length}\n` +
-                        `⏱ Время: ${totalTime}с (${formatTime(totalTime)})\n` +
-                        `🚀 Скорость: ${avgWpm} слов/мин\n` +
-                        `💾 Сэкономлено: ${saved}с\n` +
-                        `🔢 Всего прочтений: ${readingsCount}` +
-                        (shouldShowActivation ? '\n\n🎁 Показан экран активации' : '');
-                    
-                    fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify({
-                            chat_id: adminId,
-                            text: message,
-                            parse_mode: 'HTML'
-                        })
-                    }).then(response => {
-                        if (response.ok) {
-                            console.log('✅ Статистика отправлена админу');
-                        }
-                    }).catch(error => {
-                        console.log('Ошибка отправки статистики:', error);
+                    console.log('Статистика чтения:', {
+                        user: user?.first_name,
+                        words: words.length,
+                        time: totalTime,
+                        speed: avgWpm,
+                        readingsCount: readingsCount
                     });
+                    
                 } catch (error) {
-                    console.log('Ошибка отправки статистики:', error);
+                    console.log('Ошибка логирования статистики:', error);
                 }
             }
         }
