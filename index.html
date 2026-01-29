@@ -433,11 +433,25 @@
                 <div class="benefit-item">Уведомления о новых материалах</div>
             </div>
 
-            <button class="activation-button" onclick="activateBot()">
-                🚀 Активировать бесплатно
-            </button>
+            <div style="background: rgba(255,255,255,0.2); padding: 20px; border-radius: 12px; margin: 20px 0;">
+                <div style="font-size: 16px; font-weight: 600; margin-bottom: 12px;">
+                    📱 Как активировать:
+                </div>
+                <div style="font-size: 14px; line-height: 1.8; text-align: left;">
+                    1️⃣ Закройте это окно<br>
+                    2️⃣ Найдите бота: <strong>@rsvp_reader_bot</strong><br>
+                    3️⃣ Нажмите START
+                </div>
+                <button class="activation-button" onclick="copyBotLink()" style="margin-top: 16px;">
+                    📋 Скопировать ссылку на бота
+                </button>
+                <div id="copyStatus" style="margin-top: 12px; font-size: 14px; display: none; color: #4ade80;">
+                    ✅ Ссылка скопирована!
+                </div>
+            </div>
+
             <button class="skip-button" onclick="skipActivation()">
-                Пока нет
+                Не сейчас
             </button>
         </div>
     </div>
@@ -554,18 +568,49 @@
             localStorage.setItem(ACTIVATION_SHOWN_KEY, 'true');
         }
         
-        function activateBot() {
-            // Используем Telegram deep link для открытия бота
-            const botUsername = 'rsvp_reader_bot';
-            const deepLink = `https://t.me/${botUsername}?start=activate`;
+        function copyBotLink() {
+            const botLink = 'https://t.me/rsvp_reader_bot';
             
-            if (tg) {
-                // Открываем внешнюю ссылку через Telegram API
-                tg.openTelegramLink(deepLink);
+            // Пробуем скопировать в буфер обмена
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(botLink).then(() => {
+                    showCopyStatus();
+                }).catch(() => {
+                    fallbackCopy(botLink);
+                });
             } else {
-                // Запасной вариант
-                window.open(deepLink, '_blank');
+                fallbackCopy(botLink);
             }
+            
+            // Вибрация
+            if (tg) {
+                tg.HapticFeedback.notificationOccurred('success');
+            }
+        }
+        
+        function fallbackCopy(text) {
+            // Запасной способ копирования для старых браузеров
+            const textArea = document.createElement('textarea');
+            textArea.value = text;
+            textArea.style.position = 'fixed';
+            textArea.style.left = '-999999px';
+            document.body.appendChild(textArea);
+            textArea.select();
+            try {
+                document.execCommand('copy');
+                showCopyStatus();
+            } catch (err) {
+                console.log('Ошибка копирования');
+            }
+            document.body.removeChild(textArea);
+        }
+        
+        function showCopyStatus() {
+            const status = document.getElementById('copyStatus');
+            status.style.display = 'block';
+            setTimeout(() => {
+                status.style.display = 'none';
+            }, 3000);
         }
         
         function skipActivation() {
